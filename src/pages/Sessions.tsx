@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Calendar, Clock, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
+import AddSessionDialog from '@/components/dialogs/AddSessionDialog';
 
 const sessions = [
   {
@@ -58,6 +59,7 @@ const daysOfWeek = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأ�
 export default function Sessions() {
   const [currentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -91,7 +93,10 @@ export default function Sessions() {
           <h1 className="page-title">الجلسات والمواعيد</h1>
           <p className="text-muted-foreground mt-1">تتبع جميع الجلسات والمواعيد القانونية</p>
         </div>
-        <button className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2">
+        <button 
+          onClick={() => setIsAddDialogOpen(true)}
+          className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2"
+        >
           <Plus className="w-5 h-5" />
           جلسة جديدة
         </button>
@@ -281,6 +286,9 @@ export default function Sessions() {
           </table>
         </div>
       </div>
+
+      {/* Add Session Dialog */}
+      <AddSessionDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
     </div>
   );
 }
