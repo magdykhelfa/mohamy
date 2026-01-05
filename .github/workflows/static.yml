@@ -1,31 +1,41 @@
 name: Deploy Vite Site
+
 on:
   push:
     branches: ["main"]
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install dependencies
         run: npm install --include=dev
+
       - name: Build
-        # زودنا السطر ده عشان نتأكد إن الفولدر بيكارته غصب عنه
         run: npx vite build
+
+      # 🔥 السطر السحري اللي بيحل 404 نهائي
+      - name: SPA fallback for GitHub Pages
+        run: cp dist/index.html dist/404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # بنأكد عليه يرفع فولدر dist اللي لسه معمول له build حالا
           path: ./dist
+
   deploy:
     environment:
       name: github-pages
