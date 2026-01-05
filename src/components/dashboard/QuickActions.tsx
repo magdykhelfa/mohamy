@@ -1,55 +1,58 @@
-import { Plus, UserPlus, Calendar, FileText, DollarSign, Bell } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Plus, UserPlus, Calendar, FileText, DollarSign, Bell } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const actions = [
   {
-    id: 'new-case',
-    label: 'قضية جديدة',
+    id: "new-case",
+    label: "قضية جديدة",
     icon: Plus,
-    path: '/cases/new',
-    color: 'from-primary to-navy-light',
+    path: "/cases?mode=new",
+    color: "from-primary to-navy-light",
   },
   {
-    id: 'new-client',
-    label: 'عميل جديد',
+    id: "new-client",
+    label: "عميل جديد",
     icon: UserPlus,
-    path: '/clients/new',
-    color: 'from-gold to-gold-light',
+    path: "/clients?mode=new",
+    color: "from-gold to-gold-light",
   },
   {
-    id: 'new-session',
-    label: 'جلسة جديدة',
+    id: "new-session",
+    label: "جلسة جديدة",
     icon: Calendar,
-    path: '/sessions/new',
-    color: 'from-success to-emerald-400',
+    path: "/sessions?mode=new",
+    color: "from-success to-emerald-400",
   },
   {
-    id: 'new-document',
-    label: 'رفع مستند',
+    id: "new-document",
+    label: "رفع مستند",
     icon: FileText,
-    path: '/documents/upload',
-    color: 'from-purple-500 to-purple-400',
+    path: "/documents?mode=new",
+    color: "from-purple-500 to-purple-400",
   },
   {
-    id: 'new-payment',
-    label: 'تسجيل دفعة',
+    id: "new-payment",
+    label: "تسجيل دفعة",
     icon: DollarSign,
-    path: '/finance/new',
-    color: 'from-blue-500 to-blue-400',
+    path: "/finance?mode=new",
+    color: "from-blue-500 to-blue-400",
   },
   {
-    id: 'new-alert',
-    label: 'تنبيه جديد',
+    id: "new-alert",
+    label: "تنبيه جديد",
     icon: Bell,
-    path: '/alerts/new',
-    color: 'from-orange-500 to-orange-400',
+    path: "/alerts?mode=new",
+    color: "from-orange-500 to-orange-400",
   },
 ];
 
 export function QuickActions() {
   return (
     <div className="bg-card rounded-xl shadow-card p-6">
-      <h2 className="text-lg font-semibold text-foreground mb-4">إجراءات سريعة</h2>
+      <h2 className="text-lg font-semibold text-foreground mb-4">
+        إجراءات سريعة
+      </h2>
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {actions.map((action) => (
           <Link
