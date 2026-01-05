@@ -17,12 +17,14 @@ jobs:
         with:
           node-version: 20
       - name: Install dependencies
-        run: npm install
+        run: npm install --include=dev
       - name: Build
-        run: npm run build
+        # زودنا السطر ده عشان نتأكد إن الفولدر بيكارته غصب عنه
+        run: npx vite build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          # بنأكد عليه يرفع فولدر dist اللي لسه معمول له build حالا
           path: ./dist
   deploy:
     environment:
