@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Filter, Eye, Edit, Trash2, Calendar, User, Building } from 'lucide-react';
+import AddCaseDialog from '@/components/dialogs/AddCaseDialog';
 
 const cases = [
   {
@@ -61,20 +62,20 @@ const typeColors: Record<string, string> = {
   'إداري': 'bg-teal-100 text-teal-700',
 };
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   active: 'bg-success/10 text-success',
   pending: 'bg-warning/10 text-warning',
   closed: 'bg-muted text-muted-foreground',
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   active: 'نشطة',
   pending: 'معلقة',
   closed: 'منتهية',
 };
 
 export default function Cases() {
-  const [view, setView] = useState<'grid' | 'table'>('table');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -84,7 +85,10 @@ export default function Cases() {
           <h1 className="page-title">إدارة القضايا</h1>
           <p className="text-muted-foreground mt-1">عرض وإدارة جميع القضايا</p>
         </div>
-        <button className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2">
+        <button 
+          onClick={() => setIsAddDialogOpen(true)}
+          className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2"
+        >
           <Plus className="w-5 h-5" />
           قضية جديدة
         </button>
@@ -211,6 +215,9 @@ export default function Cases() {
           </table>
         </div>
       </div>
+
+      {/* Add Case Dialog */}
+      <AddCaseDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
     </div>
   );
 }

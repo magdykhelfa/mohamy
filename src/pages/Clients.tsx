@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Search, Filter, MoreVertical, Phone, Mail, MapPin, Briefcase } from 'lucide-react';
+import AddClientDialog from '@/components/dialogs/AddClientDialog';
 
 const clients = [
   {
@@ -54,6 +55,7 @@ const clients = [
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -63,7 +65,10 @@ export default function Clients() {
           <h1 className="page-title">إدارة العملاء</h1>
           <p className="text-muted-foreground mt-1">إدارة بيانات العملاء وملفاتهم</p>
         </div>
-        <button className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2">
+        <button 
+          onClick={() => setIsAddDialogOpen(true)}
+          className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2"
+        >
           <Plus className="w-5 h-5" />
           عميل جديد
         </button>
@@ -147,6 +152,9 @@ export default function Clients() {
           </div>
         ))}
       </div>
+
+      {/* Add Client Dialog */}
+      <AddClientDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
     </div>
   );
 }
