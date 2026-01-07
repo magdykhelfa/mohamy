@@ -1,269 +1,96 @@
-import { useState } from 'react';
-import { 
-  Upload, 
-  Search, 
-  Folder, 
-  FileText, 
-  Image, 
-  File,
-  Download,
-  Trash2,
-  Eye,
-  MoreVertical,
-  Grid,
-  List,
-  Filter
-} from 'lucide-react';
-
-const documents = [
-  {
-    id: 1,
-    name: 'عقد توكيل - أحمد محمد.pdf',
-    type: 'pdf',
-    size: '2.4 MB',
-    case: '2024/1234',
-    client: 'أحمد محمد علي',
-    uploadDate: '2024-01-10',
-    uploadedBy: 'محمد أحمد',
-  },
-  {
-    id: 2,
-    name: 'صورة البطاقة.jpg',
-    type: 'image',
-    size: '1.2 MB',
-    case: '2024/1234',
-    client: 'أحمد محمد علي',
-    uploadDate: '2024-01-10',
-    uploadedBy: 'محمد أحمد',
-  },
-  {
-    id: 3,
-    name: 'عقد بيع أرض.docx',
-    type: 'doc',
-    size: '856 KB',
-    case: '2024/5678',
-    client: 'شركة النور للتجارة',
-    uploadDate: '2024-01-08',
-    uploadedBy: 'سارة محمد',
-  },
-  {
-    id: 4,
-    name: 'حكم المحكمة.pdf',
-    type: 'pdf',
-    size: '3.1 MB',
-    case: '2024/9012',
-    client: 'فاطمة إبراهيم',
-    uploadDate: '2024-01-05',
-    uploadedBy: 'محمد أحمد',
-  },
-  {
-    id: 5,
-    name: 'مذكرة دفاع.pdf',
-    type: 'pdf',
-    size: '1.8 MB',
-    case: '2024/3456',
-    client: 'محمود حسن',
-    uploadDate: '2024-01-03',
-    uploadedBy: 'محمد أحمد',
-  },
-];
-
-const folders = [
-  { id: 1, name: 'قضية 2024/1234', count: 12 },
-  { id: 2, name: 'قضية 2024/5678', count: 8 },
-  { id: 3, name: 'قضية 2024/9012', count: 5 },
-  { id: 4, name: 'عقود عامة', count: 23 },
-];
-
-const getFileIcon = (type: string) => {
-  switch (type) {
-    case 'pdf':
-      return <FileText className="w-8 h-8 text-red-500" />;
-    case 'image':
-      return <Image className="w-8 h-8 text-blue-500" />;
-    case 'doc':
-      return <File className="w-8 h-8 text-blue-600" />;
-    default:
-      return <File className="w-8 h-8 text-muted-foreground" />;
-  }
-};
+import { useState, useEffect, useRef } from 'react';
+import { Upload, Search, Folder, FileText, Image, File, Download, Trash2, Eye, Grid, List } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Documents() {
   const [view, setView] = useState<'grid' | 'list'>('list');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('جميع الأنواع');
+  const [docs, setDocs] = useState(() => { const saved = localStorage.getItem('lawyer_docs'); return saved ? JSON.parse(saved) : []; });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { localStorage.setItem('lawyer_docs', JSON.stringify(docs)); }, [docs]);
+
+  const folders = Array.from(new Set(docs.map((d: any) => d.folderName))).filter(Boolean);
+
+  const handleFiles = async (files: FileList | null, isFolder = false) => {
+    if (!files) return;
+    const newEntries: any[] = [];
+    for (const file of Array.from(files)) {
+      const reader = new FileReader();
+      const fileData = await new Promise((resolve) => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+      const type = file.type.includes('pdf') ? 'PDF' : file.type.includes('image') ? 'صور' : file.name.endsWith('.doc') || file.name.endsWith('.docx') ? 'Word' : 'أخرى';
+      const folderPath = (file as any).webkitRelativePath;
+      const folderName = isFolder && folderPath ? folderPath.split('/')[0] : 'ملفات عامة';
+      newEntries.push({ id: Date.now() + Math.random(), name: file.name, type, size: (file.size / 1024 / 1024).toFixed(2) + ' MB', uploadDate: new Date().toISOString().split('T')[0], data: fileData, folderName });
+    }
+    setDocs((prev: any) => [...newEntries, ...prev]);
+    toast.success(isFolder ? 'تم رفع المجلد بنجاح' : 'تم رفع الملفات بنجاح');
+  };
+
+  const downloadFile = (file: any) => { const link = document.createElement('a'); link.href = file.data; link.download = file.name; link.click(); };
+
+  const filteredDocs = docs.filter((d: any) => (filterType === 'جميع الأنواع' || d.type === filterType) && d.name.includes(searchTerm));
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">إدارة المستندات</h1>
-          <p className="text-muted-foreground mt-1">رفع وتنظيم جميع المستندات</p>
+    <div className="space-y-6 text-right" dir="rtl">
+      <div className="flex justify-between items-center">
+        <div><h1 className="text-2xl font-bold font-arabic">إدارة المستندات</h1><p className="text-xs text-muted-foreground mt-1">دعم رفع المجلدات والملفات وتصنيفها تلقائياً</p></div>
+        <div className="flex gap-2">
+          <button onClick={() => folderInputRef.current?.click()} className="bg-navy-dark text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold border-2 border-gold/50 hover:bg-gold hover:text-navy-dark transition-all"><Folder className="w-4 h-4" /> رفع مجلد</button>
+          <button onClick={() => fileInputRef.current?.click()} className="btn-gold px-6 py-2 rounded-lg flex items-center gap-2 font-bold"><Upload className="w-4 h-4" /> رفع ملفات</button>
         </div>
-        <button className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2">
-          <Upload className="w-5 h-5" />
-          رفع مستند
-        </button>
       </div>
 
-      {/* Upload Area */}
-      <div className="bg-card rounded-xl shadow-card p-8 border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <Upload className="w-8 h-8 text-primary" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">اسحب الملفات هنا أو انقر للرفع</h3>
-          <p className="text-sm text-muted-foreground">
-            PDF, Word, صور (حد أقصى 25 ميجابايت لكل ملف)
-          </p>
-        </div>
+      <input type="file" ref={fileInputRef} onChange={(e) => handleFiles(e.target.files)} className="hidden" multiple />
+      <input type="file" ref={folderInputRef} onChange={(e) => handleFiles(e.target.files, true)} className="hidden" {...({ webkitdirectory: "", directory: "" } as any)} />
+
+      <div onClick={() => fileInputRef.current?.click()} className="bg-card rounded-xl p-8 border-2 border-dashed border-gold/30 hover:border-gold hover:bg-gold/5 transition-all cursor-pointer text-center group">
+        <Upload className="w-10 h-10 text-gold mx-auto mb-2 group-hover:scale-110 transition-transform" />
+        <h3 className="text-lg font-bold">اسحب الملفات هنا أو انقر للرفع</h3>
+        <p className="text-xs text-muted-foreground">سيتم التعرف على النوع (PDF, Word, صور) أوتوماتيكياً</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Folders Sidebar */}
-        <div className="bg-card rounded-xl shadow-card p-4">
-          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Folder className="w-5 h-5 text-gold" />
-            المجلدات
-          </h3>
-          <div className="space-y-2">
-            {folders.map((folder) => (
-              <button
-                key={folder.id}
-                className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors text-right"
-              >
-                <div className="flex items-center gap-2">
-                  <Folder className="w-5 h-5 text-gold" />
-                  <span className="text-sm text-foreground">{folder.name}</span>
-                </div>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                  {folder.count}
-                </span>
+        <div className="bg-card rounded-xl border p-4 shadow-sm h-fit">
+          <h3 className="font-bold mb-3 flex items-center gap-2 text-gold"><Folder className="w-4 h-4" /> المجلدات المرفوعة</h3>
+          <div className="space-y-1">
+            {folders.length > 0 ? folders.map((f: any, i) => (
+              <button key={i} onClick={() => setSearchTerm(f)} className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-muted text-xs font-bold border border-transparent hover:border-gold/20">
+                <div className="flex items-center gap-2"><Folder className="w-4 h-4 text-gold/60" /> <span>{f}</span></div>
+                <span className="bg-muted px-2 py-0.5 rounded-full text-[10px]">{docs.filter((d: any) => d.folderName === f).length}</span>
               </button>
-            ))}
+            )) : <p className="text-[10px] text-muted-foreground text-center py-4">لا توجد مجلدات حالياً</p>}
           </div>
         </div>
 
-        {/* Documents */}
-        <div className="lg:col-span-3 bg-card rounded-xl shadow-card overflow-hidden">
-          <div className="p-4 border-b border-border flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex-1 min-w-[250px]">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="بحث في المستندات..."
-                  className="input-field pr-9 py-2 w-full"
-                />
-              </div>
-            </div>
+        <div className="lg:col-span-3 bg-card rounded-xl border shadow-sm overflow-hidden">
+          <div className="p-4 border-b flex gap-4 items-center justify-between bg-muted/5">
+            <div className="relative flex-1 max-w-sm"><Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><input type="text" placeholder="بحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input-field pr-9 py-1.5 text-xs w-full border" /></div>
             <div className="flex items-center gap-2">
-              <select className="input-field w-auto py-2 text-sm">
-                <option>جميع الأنواع</option>
-                <option>PDF</option>
-                <option>Word</option>
-                <option>صور</option>
-              </select>
-              <div className="flex items-center border border-border rounded-lg">
-                <button
-                  onClick={() => setView('grid')}
-                  className={`p-2 ${view === 'grid' ? 'bg-muted' : ''}`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setView('list')}
-                  className={`p-2 ${view === 'list' ? 'bg-muted' : ''}`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
+              <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="input-field py-1 text-xs border w-28"><option>جميع الأنواع</option><option>PDF</option><option>Word</option><option>صور</option></select>
+              <div className="flex border rounded-lg overflow-hidden"><button onClick={() => setView('grid')} className={`p-1.5 ${view === 'grid' ? 'bg-gold text-white' : ''}`}><Grid className="w-4 h-4" /></button><button onClick={() => setView('list')} className={`p-1.5 ${view === 'list' ? 'bg-gold text-white' : ''}`}><List className="w-4 h-4" /></button></div>
             </div>
           </div>
-
-          {view === 'list' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                      الملف
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                      القضية
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                      الحجم
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                      تاريخ الرفع
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                      إجراءات
-                    </th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-right">
+              <thead><tr className="bg-muted/30 text-[10px] font-bold border-b"><th className="px-4 py-2">الملف</th><th className="px-4 py-2">المجلد</th><th className="px-4 py-2 text-center">الحجم</th><th className="px-4 py-2 text-center">إجراءات</th></tr></thead>
+              <tbody className="divide-y divide-border">
+                {filteredDocs.map((doc: any) => (
+                  <tr key={doc.id} className="hover:bg-muted/10 transition-colors">
+                    <td className="px-4 py-2"><div className="flex items-center gap-2 text-sm font-bold"><FileText className={`w-4 h-4 ${doc.type === 'PDF' ? 'text-red-500' : doc.type === 'صور' ? 'text-blue-500' : 'text-blue-700'}`} /> {doc.name}</div></td>
+                    <td className="px-4 py-2 text-xs font-medium text-muted-foreground">{doc.folderName}</td>
+                    <td className="px-4 py-2 text-center text-[10px] font-mono">{doc.size}</td>
+                    <td className="px-4 py-2 text-center"><div className="flex items-center justify-center gap-1">
+                      <button onClick={() => downloadFile(doc)} className="p-1.5 hover:bg-muted rounded-lg text-gold" title="تحميل"><Download className="w-4 h-4" /></button>
+                      <button onClick={() => setDocs(docs.filter((d: any) => d.id !== doc.id))} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Trash2 className="w-4 h-4" /></button>
+                    </div></td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {documents.map((doc) => (
-                    <tr key={doc.id} className="table-row-hover">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          {getFileIcon(doc.type)}
-                          <div>
-                            <p className="font-medium text-foreground">{doc.name}</p>
-                            <p className="text-sm text-muted-foreground">{doc.client}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-foreground">{doc.case}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{doc.size}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{doc.uploadDate}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1">
-                          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                            <Eye className="w-4 h-4 text-primary" />
-                          </button>
-                          <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                            <Download className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                          <button className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="p-4 border border-border rounded-xl hover:shadow-card transition-all group"
-                >
-                  <div className="flex justify-center mb-4">
-                    {getFileIcon(doc.type)}
-                  </div>
-                  <p className="font-medium text-foreground text-sm text-center truncate">
-                    {doc.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground text-center mt-1">{doc.size}</p>
-                  <div className="flex items-center justify-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1.5 hover:bg-muted rounded-lg">
-                      <Eye className="w-4 h-4 text-primary" />
-                    </button>
-                    <button className="p-1.5 hover:bg-muted rounded-lg">
-                      <Download className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                    <button className="p-1.5 hover:bg-destructive/10 rounded-lg">
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

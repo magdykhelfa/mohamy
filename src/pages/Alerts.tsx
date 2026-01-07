@@ -1,258 +1,131 @@
-import { useState } from 'react';
-import { 
-  Bell, 
-  Calendar, 
-  DollarSign, 
-  AlertTriangle, 
-  FileText,
-  Clock,
-  CheckCircle,
-  X,
-  Settings,
-  Filter
-} from 'lucide-react';
-
-const alerts = [
-  {
-    id: 1,
-    type: 'session',
-    title: 'جلسة غداً',
-    description: 'قضية رقم 2024/1234 - محكمة الجيزة الابتدائية',
-    date: '2024-01-15',
-    time: '10:00',
-    priority: 'high',
-    read: false,
-  },
-  {
-    id: 2,
-    type: 'session',
-    title: 'جلسة بعد 3 أيام',
-    description: 'قضية رقم 2024/9012 - محكمة الأسرة',
-    date: '2024-01-18',
-    time: '09:00',
-    priority: 'medium',
-    read: false,
-  },
-  {
-    id: 3,
-    type: 'payment',
-    title: 'مستحقات متأخرة',
-    description: 'العميل أحمد محمد - مبلغ 15,000 ج.م متأخر 30 يوم',
-    priority: 'high',
-    read: false,
-  },
-  {
-    id: 4,
-    type: 'case',
-    title: 'قضية بدون تحديث',
-    description: 'قضية رقم 2024/3456 لم يتم تحديثها منذ 15 يوم',
-    priority: 'medium',
-    read: true,
-  },
-  {
-    id: 5,
-    type: 'document',
-    title: 'انتهاء توكيل',
-    description: 'توكيل العميل شركة النور ينتهي بعد 7 أيام',
-    date: '2024-01-22',
-    priority: 'high',
-    read: false,
-  },
-  {
-    id: 6,
-    type: 'session',
-    title: 'تذكير بجلسة الأسبوع القادم',
-    description: 'قضية رقم 2024/7890 - محكمة شمال القاهرة',
-    date: '2024-01-20',
-    time: '11:30',
-    priority: 'low',
-    read: true,
-  },
-];
-
-const getIcon = (type: string) => {
-  switch (type) {
-    case 'session':
-      return Calendar;
-    case 'payment':
-      return DollarSign;
-    case 'case':
-      return AlertTriangle;
-    case 'document':
-      return FileText;
-    default:
-      return Bell;
-  }
-};
-
-const priorityStyles = {
-  high: 'border-r-4 border-r-destructive bg-destructive/5',
-  medium: 'border-r-4 border-r-warning bg-warning/5',
-  low: 'border-r-4 border-r-muted bg-muted/30',
-};
-
-const priorityLabels = {
-  high: 'عاجل',
-  medium: 'متوسط',
-  low: 'عادي',
-};
-
-const priorityBadgeStyles = {
-  high: 'bg-destructive/10 text-destructive',
-  medium: 'bg-warning/10 text-warning',
-  low: 'bg-muted text-muted-foreground',
-};
+import { useState, useEffect } from 'react';
+import { Bell, Calendar, DollarSign, Clock, X, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Alerts() {
-  const [filter, setFilter] = useState<'all' | 'unread' | 'session' | 'payment' | 'case'>('all');
-  const unreadCount = alerts.filter(a => !a.read).length;
+  const [filter, setFilter] = useState('all');
+  const [alerts, setAlerts] = useState<any[]>([]);
 
-  const filteredAlerts = alerts.filter(alert => {
-    if (filter === 'all') return true;
-    if (filter === 'unread') return !alert.read;
-    return alert.type === filter;
-  });
+  useEffect(() => {
+    // سحب البيانات من المخزن
+    const cases = JSON.parse(localStorage.getItem('lawyer_cases') || '[]');
+    const transactions = JSON.parse(localStorage.getItem('lawyer_transactions') || '[]');
+    const systemAlerts: any[] = [];
+    
+    // التاريخ بتاع النهاردة بالظبط
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. فحص الجلسات
+    cases.forEach((c: any) => {
+      // بنجيب أي تاريخ موجود في القضية (سواء جلسة قادمة أو تاريخ مسجل)
+      const sDate = c.nextSession || c.sessionDate || c.date;
+      
+      // لو التاريخ هو النهاردة (زي ما إنت مدخله) هنظهره فوراً كتنبيه عاجل
+      if (sDate === today) {
+        systemAlerts.push({
+          id: `case-${c.id}`,
+          type: 'session',
+          title: '⚖️ جلسة اليوم الآن',
+          description: `قضية رقم: ${c.number || '---'} | محكمة: ${c.court || 'غير محدد'}`,
+          date: sDate,
+          time: c.time || '10:00',
+          priority: 'high'
+        });
+      } 
+      // لو مفيش تاريخ خالص، نبه المحامي إنه يضيف موعد
+      else if (!sDate) {
+        systemAlerts.push({
+          id: `warn-${c.id}`,
+          type: 'case',
+          title: '⚠️ قضية بدون تحديث',
+          description: `قضية رقم ${c.number || 'جديدة'} لم يتم تحديد موعد جلسة لها`,
+          priority: 'medium'
+        });
+      }
+    });
+
+    // 2. فحص المستحقات (لو فيه مليم واحد باقي)
+    transactions.forEach((tx: any) => {
+      const remaining = parseFloat(tx.remaining || 0);
+      if (remaining > 0) {
+        systemAlerts.push({
+          id: `pay-${tx.id}`,
+          type: 'payment',
+          title: '💰 مستحقات مالية',
+          description: `العميل: ${tx.client} | متبقي عليه: ${remaining} ج.م`,
+          priority: 'high'
+        });
+      }
+    });
+
+    setAlerts(systemAlerts);
+  }, []);
+
+  const filtered = alerts.filter(a => filter === 'all' ? true : a.type === filter);
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="page-header">
+    <div className="space-y-6 text-right" dir="rtl">
+      <div className="flex justify-between items-center bg-card p-6 rounded-2xl border-2 border-gold/20 shadow-sm">
         <div>
-          <h1 className="page-title">التنبيهات</h1>
-          <p className="text-muted-foreground mt-1">
-            لديك {unreadCount} تنبيهات غير مقروءة
-          </p>
+          <h1 className="text-2xl font-bold font-arabic text-navy-dark">مركز التنبيهات</h1>
+          <p className="text-sm text-muted-foreground mt-1">لديك ({alerts.length}) تنبيهات تحتاج انتباهك</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            تحديد الكل كمقروء
-          </button>
-          <button className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-2">
-            <Settings className="w-4 h-4" />
-            إعدادات التنبيهات
-          </button>
+        <div className="p-3 bg-gold/10 rounded-full">
+          <Bell className="w-8 h-8 text-gold" />
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'
-          }`}
-        >
-          الكل
-        </button>
-        <button
-          onClick={() => setFilter('unread')}
-          className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-            filter === 'unread' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'
-          }`}
-        >
-          غير مقروء
-          <span className="bg-destructive text-white text-xs px-2 py-0.5 rounded-full">
-            {unreadCount}
-          </span>
-        </button>
-        <button
-          onClick={() => setFilter('session')}
-          className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-            filter === 'session' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'
-          }`}
-        >
-          <Calendar className="w-4 h-4" />
-          الجلسات
-        </button>
-        <button
-          onClick={() => setFilter('payment')}
-          className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-            filter === 'payment' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'
-          }`}
-        >
-          <DollarSign className="w-4 h-4" />
-          المستحقات
-        </button>
-        <button
-          onClick={() => setFilter('case')}
-          className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-            filter === 'case' ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'
-          }`}
-        >
-          <AlertTriangle className="w-4 h-4" />
-          القضايا
-        </button>
+      {/* الفلترة */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[{id:'all', n:'الكل'}, {id:'session', n:'الجلسات'}, {id:'payment', n:'المستحقات'}, {id:'case', n:'القضايا'}].map(t => (
+          <button 
+            key={t.id} 
+            onClick={() => setFilter(t.id)} 
+            className={`px-6 py-2 rounded-xl text-xs font-bold border-2 transition-all ${filter === t.id ? 'bg-gold text-white border-gold shadow-md' : 'bg-white hover:border-gold'}`}
+          >
+            {t.n}
+          </button>
+        ))}
       </div>
 
-      {/* Alerts List */}
-      <div className="space-y-3">
-        {filteredAlerts.map((alert) => {
-          const Icon = getIcon(alert.type);
-          return (
-            <div
-              key={alert.id}
-              className={`bg-card rounded-xl shadow-card p-4 ${priorityStyles[alert.priority]} ${
-                !alert.read ? 'ring-1 ring-primary/20' : ''
-              } transition-all hover:shadow-hover`}
-            >
-              <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-xl ${
-                  alert.priority === 'high' ? 'bg-destructive/10' :
-                  alert.priority === 'medium' ? 'bg-warning/10' : 'bg-muted'
-                }`}>
-                  <Icon className={`w-5 h-5 ${
-                    alert.priority === 'high' ? 'text-destructive' :
-                    alert.priority === 'medium' ? 'text-warning' : 'text-muted-foreground'
-                  }`} />
+      {/* قائمة التنبيهات */}
+      <div className="grid gap-3">
+        {filtered.length > 0 ? filtered.map((alert) => (
+          <div key={alert.id} className={`bg-white rounded-xl p-5 border-r-[6px] shadow-sm flex items-start gap-4 hover:bg-slate-50 transition-colors ${alert.priority === 'high' ? 'border-r-red-600' : 'border-r-amber-500'}`}>
+            <div className={`p-3 rounded-lg ${alert.type === 'session' ? 'bg-blue-100 text-blue-600' : alert.type === 'payment' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-600'}`}>
+              {alert.type === 'session' ? <Calendar className="w-6 h-6" /> : alert.type === 'payment' ? <DollarSign className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-bold text-base text-navy-dark">{alert.title}</h3>
+                  <p className="text-sm text-slate-600 mt-1 font-medium">{alert.description}</p>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className={`font-semibold ${!alert.read ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {alert.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`badge-status ${priorityBadgeStyles[alert.priority]}`}>
-                        {priorityLabels[alert.priority]}
-                      </span>
-                      <button className="p-1 hover:bg-muted rounded-lg transition-colors">
-                        <X className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    </div>
-                  </div>
-                  {(alert.date || alert.time) && (
-                    <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                      {alert.date && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {alert.date}
-                        </span>
-                      )}
-                      {alert.time && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {alert.time}
-                        </span>
-                      )}
-                    </div>
+                <button onClick={() => {setAlerts(alerts.filter(a => a.id !== alert.id)); toast.success('تم إخفاء التنبيه');}} className="text-slate-300 hover:text-red-500">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              {alert.date && (
+                <div className="mt-4 flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-md text-[11px] font-bold text-navy-dark border">
+                    <Clock className="w-3.5 h-3.5 text-gold" /> {alert.date}
+                  </span>
+                  {alert.time && (
+                    <span className="text-[11px] font-bold text-gold bg-gold/5 px-3 py-1 rounded-md border border-gold/10">
+                      الساعة: {alert.time}
+                    </span>
                   )}
                 </div>
-              </div>
+              )}
             </div>
-          );
-        })}
+          </div>
+        )) : (
+          <div className="text-center py-24 bg-white rounded-3xl border-4 border-dashed border-slate-100">
+            <Bell className="w-16 h-16 mx-auto mb-4 text-slate-200 opacity-20" />
+            <p className="text-slate-400 font-bold">لا يوجد تنبيهات حالياً في هذا القسم</p>
+          </div>
+        )}
       </div>
-
-      {filteredAlerts.length === 0 && (
-        <div className="text-center py-12">
-          <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">لا توجد تنبيهات</h3>
-          <p className="text-muted-foreground">ستظهر التنبيهات الجديدة هنا</p>
-        </div>
-      )}
     </div>
   );
 }

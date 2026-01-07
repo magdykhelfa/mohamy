@@ -1,204 +1,92 @@
-import { 
-  FileBarChart, 
-  Download, 
-  Printer, 
-  Calendar,
-  Briefcase,
-  DollarSign,
-  Users,
-  TrendingUp,
-  FileText
-} from 'lucide-react';
-
-const reportTypes = [
-  {
-    id: 'cases',
-    title: 'تقرير القضايا',
-    description: 'تقرير شامل عن جميع القضايا وحالاتها',
-    icon: Briefcase,
-    color: 'from-primary to-navy-light',
-  },
-  {
-    id: 'sessions',
-    title: 'تقرير الجلسات',
-    description: 'تقرير تفصيلي عن الجلسات والمواعيد',
-    icon: Calendar,
-    color: 'from-gold to-gold-light',
-  },
-  {
-    id: 'finance',
-    title: 'التقرير المالي',
-    description: 'تقرير الإيرادات والمصروفات',
-    icon: DollarSign,
-    color: 'from-success to-emerald-400',
-  },
-  {
-    id: 'clients',
-    title: 'تقرير العملاء',
-    description: 'تقرير عن العملاء وتعاملاتهم',
-    icon: Users,
-    color: 'from-purple-500 to-purple-400',
-  },
-  {
-    id: 'performance',
-    title: 'تقرير الأداء',
-    description: 'تقرير أداء المحامين والقضايا',
-    icon: TrendingUp,
-    color: 'from-blue-500 to-blue-400',
-  },
-  {
-    id: 'documents',
-    title: 'تقرير المستندات',
-    description: 'قائمة بجميع المستندات المرفوعة',
-    icon: FileText,
-    color: 'from-orange-500 to-orange-400',
-  },
-];
-
-const recentReports = [
-  {
-    id: 1,
-    name: 'تقرير القضايا - يناير 2024',
-    type: 'cases',
-    date: '2024-01-14',
-    size: '2.4 MB',
-  },
-  {
-    id: 2,
-    name: 'التقرير المالي - الربع الأول 2024',
-    type: 'finance',
-    date: '2024-01-10',
-    size: '1.8 MB',
-  },
-  {
-    id: 3,
-    name: 'تقرير العملاء - 2023',
-    type: 'clients',
-    date: '2024-01-05',
-    size: '3.2 MB',
-  },
-];
+import { useState, useEffect } from 'react';
+import { FileBarChart, Download, Printer, Calendar, Briefcase, DollarSign, Users, TrendingUp, FileText, X, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Reports() {
+  const [reportData, setReportData] = useState<{title: string, content: any[]} | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // وظيفة جلب البيانات وعرضها في المعاينة
+  const generateReport = (type: string) => {
+    setIsGenerating(true);
+    const cases = JSON.parse(localStorage.getItem('lawyer_cases') || '[]');
+    const tx = JSON.parse(localStorage.getItem('lawyer_transactions') || '[]');
+    const clients = JSON.parse(localStorage.getItem('lawyer_clients') || '[]');
+
+    setTimeout(() => {
+      if (type === 'cases') {
+        setReportData({ title: 'تقرير القضايا الشامل', content: cases.map((c:any) => ({ 'رقم القضية': c.number, 'الموكل': c.client, 'المحكمة': c.court, 'الحالة': c.status })) });
+      } else if (type === 'finance') {
+        setReportData({ title: 'التقرير المالي التفصيلي', content: tx.map((t:any) => ({ 'العميل': t.client, 'المبلغ': t.amount, 'المدفوع': t.paid, 'المتبقي': t.remaining })) });
+      } else if (type === 'clients') {
+        setReportData({ title: 'سجل العملاء', content: clients.map((cl:any) => ({ 'الاسم': cl.name, 'الهاتف': cl.phone, 'العنوان': cl.address })) });
+      }
+      setIsGenerating(false);
+      toast.success('تم تجهيز التقرير للمعاينة');
+    }, 800);
+  };
+
+  const reportTypes = [
+    { id: 'cases', title: 'تقرير القضايا', description: 'حصر شامل لكل القضايا وحالاتها', icon: Briefcase, color: 'from-blue-600 to-blue-400' },
+    { id: 'finance', title: 'التقرير المالي', description: 'حسابات الوارد والمنصرف والمبقي', icon: DollarSign, color: 'from-green-600 to-emerald-400' },
+    { id: 'clients', title: 'تقرير العملاء', description: 'بيانات التواصل مع جميع الموكلين', icon: Users, color: 'from-purple-600 to-purple-400' },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">التقارير</h1>
-          <p className="text-muted-foreground mt-1">إنشاء وتصدير التقارير</p>
-        </div>
+    <div className="space-y-6 text-right" dir="rtl">
+      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border shadow-sm">
+        <div><h1 className="text-2xl font-bold text-navy-dark font-arabic">مركز التقارير الذكي</h1><p className="text-sm text-muted-foreground font-bold">استخراج بيانات حقيقية من سجلات المكتب</p></div>
+        {isGenerating && <div className="animate-pulse text-gold font-bold flex items-center gap-2">جاري معالجة البيانات...</div>}
       </div>
 
-      {/* Report Types Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {reportTypes.map((report) => (
-          <div
-            key={report.id}
-            className="bg-card rounded-xl shadow-card p-6 hover:shadow-hover transition-all cursor-pointer group"
-          >
-            <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${report.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-              <report.icon className="w-7 h-7 text-white" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">{report.title}</h3>
-            <p className="text-sm text-muted-foreground mb-4">{report.description}</p>
-            <div className="flex items-center gap-2">
-              <button className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
-                إنشاء التقرير
-              </button>
-            </div>
+          <div key={report.id} className="bg-white rounded-2xl border p-6 hover:shadow-xl transition-all group border-b-4 border-b-gold/20">
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${report.color} flex items-center justify-center mb-4 shadow-lg text-white`}><report.icon className="w-8 h-8" /></div>
+            <h3 className="text-lg font-bold text-navy-dark mb-2">{report.title}</h3>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">{report.description}</p>
+            <button onClick={() => generateReport(report.id)} className="w-full py-3 bg-navy-dark text-white rounded-xl hover:bg-gold hover:text-navy-dark transition-all font-bold">معاينة التقرير</button>
           </div>
         ))}
       </div>
 
-      {/* Generate Custom Report */}
-      <div className="bg-card rounded-xl shadow-card p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-          <FileBarChart className="w-5 h-5 text-primary" />
-          إنشاء تقرير مخصص
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              نوع التقرير
-            </label>
-            <select className="input-field w-full">
-              <option>تقرير القضايا</option>
-              <option>تقرير الجلسات</option>
-              <option>التقرير المالي</option>
-              <option>تقرير العملاء</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              من تاريخ
-            </label>
-            <input type="date" className="input-field w-full" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              إلى تاريخ
-            </label>
-            <input type="date" className="input-field w-full" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              صيغة التصدير
-            </label>
-            <select className="input-field w-full">
-              <option>PDF</option>
-              <option>Excel</option>
-              <option>Word</option>
-            </select>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 mt-6">
-          <button className="btn-gold px-6 py-2.5 rounded-lg flex items-center gap-2">
-            <FileBarChart className="w-5 h-5" />
-            إنشاء التقرير
-          </button>
-          <button className="px-4 py-2.5 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-2">
-            <Download className="w-5 h-5" />
-            تصدير
-          </button>
-          <button className="px-4 py-2.5 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-2">
-            <Printer className="w-5 h-5" />
-            طباعة
-          </button>
-        </div>
-      </div>
-
-      {/* Recent Reports */}
-      <div className="bg-card rounded-xl shadow-card overflow-hidden">
-        <div className="p-6 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground">التقارير الأخيرة</h3>
-        </div>
-        <div className="divide-y divide-border">
-          {recentReports.map((report) => (
-            <div key={report.id} className="p-4 hover:bg-muted/30 transition-colors flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <FileBarChart className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground">{report.name}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {report.date} • {report.size}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                  <Download className="w-5 h-5 text-primary" />
-                </button>
-                <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                  <Printer className="w-5 h-5 text-muted-foreground" />
-                </button>
-              </div>
+      {/* نافذة المعاينة - التقرير بيظهر هنا مش في الطباعة فوراً */}
+      {reportData && (
+        <div className="bg-white rounded-2xl border shadow-xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+          <div className="bg-navy-dark p-4 flex justify-between items-center text-white">
+            <div className="flex items-center gap-2"><FileBarChart className="text-gold" /> <h2 className="font-bold">{reportData.title}</h2></div>
+            <div className="flex gap-2">
+              <button onClick={() => window.print()} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-all"><Printer className="w-5 h-5" /></button>
+              <button onClick={() => setReportData(null)} className="bg-red-500/20 hover:bg-red-500 p-2 rounded-lg transition-all"><X className="w-5 h-5" /></button>
             </div>
-          ))}
+          </div>
+          <div className="p-6 overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b-2 border-gold/20">
+                  {Object.keys(reportData.content[0] || {}).map(key => (
+                    <th key={key} className="p-3 text-right text-sm font-bold text-navy-dark">{key}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {reportData.content.length > 0 ? reportData.content.map((row, i) => (
+                  <tr key={i} className="border-b hover:bg-slate-50 transition-colors">
+                    {Object.values(row).map((val: any, j) => (
+                      <td key={j} className="p-3 text-sm font-medium text-slate-600">{val}</td>
+                    ))}
+                  </tr>
+                )) : <tr><td colSpan={10} className="p-10 text-center font-bold text-slate-400">لا توجد بيانات مسجلة لهذا التقرير</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className="p-4 bg-slate-50 border-t flex justify-end gap-3 text-xs font-bold text-slate-400">
+            <span>تاريخ الاستخراج: {new Date().toLocaleDateString('ar-EG')}</span>
+            <span>•</span>
+            <span>عدد السجلات: {reportData.content.length}</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
